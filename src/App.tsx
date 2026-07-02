@@ -1364,13 +1364,13 @@ function S3e() {
             const ht = parseFloat(ot);
             return isNaN(ht) ? 0 : ht;
           };
-        let bt = 0,
-          Pt = 2,
-          It = 3,
-          et = 4,
-          qe = 5,
-          $e = 6,
-          Xe = 7,
+        let bt = -1,
+          Pt = -1,
+          It = -1,
+          et = -1,
+          qe = -1,
+          $e = -1,
+          Xe = -1,
           headerRowIdx = 0;
         for (let Ye = 0; Ye < Math.min(We.length, 15); Ye++) {
           const tt = We[Ye];
@@ -1428,15 +1428,13 @@ function S3e() {
             break;
           }
         }
-        
-        // Forçar mapeamento exato solicitado pelo usuário para garantir a máxima precisão
-        bt = 0; // Coluna A (Data)
-        Pt = 2; // Coluna C (SKU)
-        It = 3; // Coluna D (Descrição do produto)
-        et = 4; // Coluna E (Quantidade)
-        qe = 5; // Coluna F (Unidade/Fator)
-        $e = 6; // Coluna G (Preço unitário)
-        Xe = 7; // Coluna H (Preço total)
+        if (bt === -1) bt = 0;
+        if (Pt === -1) Pt = 2;
+        if (It === -1) It = 3;
+        if (et === -1) et = 4;
+        if (qe === -1) qe = 5;
+        if ($e === -1) $e = 6;
+        if (Xe === -1) Xe = 7;
         
         let lastSeenDate = "";
         let lastSeenDateObj: string | null = null;
