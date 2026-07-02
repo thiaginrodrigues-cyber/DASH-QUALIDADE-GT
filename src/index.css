@@ -1,0 +1,17 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Outfit", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  .bg-cracks {
+    background-color: #ffffff;
+    background-image: 
+      radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.05) 100%),
+      url("data:image/svg+xml,%3Csvg width='800' height='800' viewBox='0 0 800 800' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 100L200 0M300 300L400 200M500 600L700 400M100 800L0 700M300 700L200 600M500 500L400 400M700 300L600 200M800 100L700 0' stroke='%23cbd5e1' stroke-width='2' fill='none' opacity='0.25'/%3E%3Cpath d='M40 40L160 160M240 240L360 360M440 440L560 560M640 640L760 760' stroke='%23e2e8f0' stroke-width='3' fill='none' opacity='0.2'/%3E%3Cpath d='M760 40L640 160M560 240L440 360M360 440L240 560M160 640L40 760' stroke='%23e2e8f0' stroke-width='3' fill='none' opacity='0.2'/%3E%3Cpath d='M0 400L800 400M400 0L400 800' stroke='%23cbd5e1' stroke-width='1' fill='none' opacity='0.15'/%3E%3C/svg%3E");
+    background-attachment: fixed;
+  }
+}

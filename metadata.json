@@ -1,0 +1,6 @@
+{
+  "name": "Dashboard Inventário 2026",
+  "description": "Dashboard completo de inventário com os módulos de Inventário Geral Girotrade, Mapa de Ocupação, Análise de Corte e Avaria, integrado com sincronização em tempo real.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
