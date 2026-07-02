@@ -1326,21 +1326,19 @@ function S3e() {
         ),
           (Fe.cortesWMS = rt));
       }
-      const yt = Q.SheetNames.find((Qe) => {
-        const normalized = Qe.toUpperCase()
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "");
-        return (
-          normalized.includes("AVARIA") ||
-          normalized.includes("AVARIAS") ||
-          normalized.includes("AVAR") ||
-          normalized.includes("PERDAS") ||
-          normalized.includes("QUEBRAS")
-        );
-      });
-      if (yt) {
-        console.log(`[Sync] Encontrada aba de Avarias: ${yt}`);
-        const Qe = Q.Sheets[yt],
+      const findSheetByKeywords = (keywords) =>
+        Q.SheetNames.find((Qe) => {
+          const normalized = Qe
+            .toUpperCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "");
+          return keywords.some((keyword) => normalized.includes(keyword));
+        });
+
+      const parseAvariaLikeSheet = (sheetName, statusLabel) => {
+        if (!sheetName) return [];
+        console.log(`[Sync] Encontrada aba de ${statusLabel}: ${sheetName}`);
+        const Qe = Q.Sheets[sheetName],
           We: any = Ko.sheet_to_json(Qe, { header: 1 }),
           rt = [],
           _t = (Ye) => {
@@ -1423,7 +1421,7 @@ function S3e() {
             if (detectedUnitPrice !== -1) $e = detectedUnitPrice;
             if (detectedTotalPrice !== -1) Xe = detectedTotalPrice;
             console.log(
-              `[Sync] Mapeamento dinâmico de AVARIA na linha ${Ye}: DATA=${bt}, SKU=${Pt}, DESC=${It}, QTD=${et}, UN=${qe}, VALOR_UNIT=${$e}, VALOR_TOTAL=${Xe}`,
+              `[Sync] Mapeamento dinâmico de ${statusLabel} na linha ${Ye}: DATA=${bt}, SKU=${Pt}, DESC=${It}, QTD=${et}, UN=${qe}, VALOR_UNIT=${$e}, VALOR_TOTAL=${Xe}`,
             );
             break;
           }
@@ -1435,10 +1433,10 @@ function S3e() {
         if (qe === -1) qe = 5;
         if ($e === -1) $e = 6;
         if (Xe === -1) Xe = 7;
-        
+
         let lastSeenDate = "";
         let lastSeenDateObj: string | null = null;
-        
+
         const startDataRow = headerRowIdx + 1;
         for (let Ye = startDataRow; Ye < We.length; Ye++) {
           const tt = We[Ye];
@@ -1452,7 +1450,8 @@ function S3e() {
             ht.toUpperCase() === "SKU" ||
             ht.toUpperCase() === "CODIGO" ||
             ht.toUpperCase() === "CÓDIGO"
-          ) continue;
+          )
+            continue;
           const pt = String(tt[It] || "").trim();
           if (
             pt.toUpperCase().includes("TOTAL") ||
@@ -1460,21 +1459,21 @@ function S3e() {
             pt.toUpperCase() === "DESCRIÇÃO" ||
             pt.toUpperCase() === "DESCRICAO" ||
             pt.toUpperCase() === "PRODUTO"
-          ) continue;
-          
+          )
+            continue;
+
           const it = _t(tt[et]) || 0,
             kt = String(tt[qe] || "UN").trim();
-          
+
           let Lt = _t(tt[$e]),
             Xt = _t(tt[Xe]);
-            
-          // Recalcular ou preencher se necessário para máxima precisão
+
           if (Xt === 0 && it > 0 && Lt > 0) {
             Xt = it * Lt;
           } else if (Lt === 0 && it > 0 && Xt > 0) {
             Lt = Xt / it;
           }
-          
+
           const qt = tt[bt];
           let Ht = be(qt),
             q = "";
@@ -1489,7 +1488,7 @@ function S3e() {
             q = lastSeenDate;
             Ht = lastSeenDateObj ? new Date(lastSeenDateObj) : null;
           }
-          
+
           rt.push({
             date: q,
             dateObj: Ht ? Ht.toISOString() : null,
@@ -1499,13 +1498,38 @@ function S3e() {
             conversionFactor: kt,
             unitPrice: Lt,
             totalPrice: Xt,
+            status: statusLabel,
           });
         }
-        (console.log(
-          `[Sync] Total de registros de Avarias mapeados: ${rt.length}`,
-        ),
-          (Fe.avaria = rt));
+        return rt;
+      };
+
+      const sheetGroups = [
+        {
+          label: "AVARIA",
+          keywords: ["AVARIA", "AVARIAS", "AVAR", "PERDAS", "QUEBRAS"],
+          status: "AVARIA",
+        },
+        {
+          label: "RECUPERADOS",
+          keywords: ["RECUPERADOS", "RECUPERADO", "RECUPERA"],
+          status: "RECUPERADO",
+        },
+        {
+          label: "DESCARTE",
+          keywords: ["DESCARTE", "DESCARTES", "DESCARTA", "BAIXA", "BAIXAS"],
+          status: "DESCARTE",
+        },
+      ];
+
+      let combinedAvariaData = [];
+      for (const group of sheetGroups) {
+        const sheetName = findSheetByKeywords(group.keywords);
+        const sheetData = parseAvariaLikeSheet(sheetName, group.status);
+        combinedAvariaData = combinedAvariaData.concat(sheetData);
       }
+      Fe.avaria = combinedAvariaData;
+      console.log(`[Sync] Total combinado de registros de Avarias/Recuperados/Descartes: ${combinedAvariaData.length}`);
       const st = ue[5] || [],
         Nt = Number(st[8]) || 0;
       ((Fe.totalPositions = Nt),
