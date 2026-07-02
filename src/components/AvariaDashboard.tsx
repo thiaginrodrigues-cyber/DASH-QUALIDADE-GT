@@ -107,7 +107,7 @@ export const e3e = function e3e({ data: e = [], theme: t }) {
     aWithStatus = A.useMemo(() => {
       return a.map((D) => {
         const key = `${D.sku}_${D.date}_${D.description}_${D.quantity}`;
-        const status = classifications[key] || "AVARIA";
+        const status = classifications[key] || D.status || "AVARIA";
         return { ...D, status, key };
       });
     }, [a, classifications]),
