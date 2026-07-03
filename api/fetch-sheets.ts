@@ -15,7 +15,8 @@ function extractSheetId(rawSheetId: string) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const rawSheetId = process.env.GOOGLE_SHEETS_ID || DEFAULT_SHEET_ID;
+  const querySheet = typeof req.query?.sheet === 'string' ? req.query.sheet.trim() : undefined;
+  const rawSheetId = querySheet || process.env.GOOGLE_SHEETS_ID || DEFAULT_SHEET_ID;
   const sheetId = extractSheetId(rawSheetId);
   const exportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx`;
 
@@ -30,9 +31,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
+      const errorMessage = `Failed to fetch Google Sheet: ${response.statusText} (Status: ${response.status}). ${errorText.slice(0, 300)}`;
+      console.error('[api/fetch-sheets] ', errorMessage);
       res.status(response.status).json({
-        error: `Failed to fetch Google Sheet: ${response.statusText}`,
-        details: errorText.slice(0, 300),
+        error: errorMessage,
       });
       return;
     }

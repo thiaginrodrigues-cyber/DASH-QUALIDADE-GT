@@ -108,6 +108,31 @@ export const e3e = function e3e({ data: e = [], theme: t }) {
         ? `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}`
         : null;
     },
+    getDateKeyFromValue = (value) => {
+      const raw = String(value || "").trim();
+      if (!raw) return null;
+      let parsed = null;
+      if (raw.includes("-")) {
+        const parts = raw.split("-");
+        if (parts.length === 3) {
+          const [first, second, third] = parts;
+          if (first.length === 4) {
+            parsed = new Date(`${first}-${second}-${third}`);
+          } else if (third.length === 4) {
+            parsed = new Date(`${third}-${second}-${first}`);
+          }
+        }
+      } else if (raw.includes("/")) {
+        const parts = raw.split("/");
+        if (parts.length === 3) {
+          const [day, month, year] = parts;
+          parsed = new Date(Number(year), Number(month) - 1, Number(day));
+        }
+      }
+      return parsed
+        ? `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}-${String(parsed.getDate()).padStart(2, "0")}`
+        : null;
+    },
     formatMonthLabel = (monthKey) => {
       if (!monthKey) return "";
       const [year, month] = monthKey.split("-");
@@ -126,6 +151,11 @@ export const e3e = function e3e({ data: e = [], theme: t }) {
         "Dez",
       ];
       return `${monthNames[Number(month) - 1]}/${year}`;
+    },
+    formatDayLabel = (dayKey) => {
+      if (!dayKey) return "";
+      const [year, month, day] = dayKey.split("-");
+      return `${day}/${month}/${year}`;
     },
     a = A.useMemo(
       () =>
@@ -150,6 +180,9 @@ export const e3e = function e3e({ data: e = [], theme: t }) {
             monthKey: k
               ? `${k.getFullYear()}-${String(k.getMonth() + 1).padStart(2, "0")}`
               : getMonthKeyFromValue(D.date),
+            dayKey: k
+              ? `${k.getFullYear()}-${String(k.getMonth() + 1).padStart(2, "0")}-${String(k.getDate()).padStart(2, "0")}`
+              : getDateKeyFromValue(D.date),
           };
         }),
       [e],
@@ -170,14 +203,26 @@ export const e3e = function e3e({ data: e = [], theme: t }) {
         Array.from(D).sort((k, O) => k.localeCompare(O))
       );
     }, [a]),
-    [s, l] = A.useState([]),
+    [selectedMonths, setSelectedMonths] = A.useState([]),
+    [selectedDays, setSelectedDays] = A.useState([]),
     [monthPickerOpen, setMonthPickerOpen] = A.useState(!1),
+    [dayPickerOpen, setDayPickerOpen] = A.useState(!1),
     [page, setPage] = A.useState(1),
+    availableDays = A.useMemo(() => {
+      const days = new Set();
+      a.forEach((item) => {
+        item.dayKey && days.add(item.dayKey);
+      });
+      return Array.from(days).sort((left, right) => left.localeCompare(right));
+    }, [a]),
     _dummy = A.useEffect(() => {
-      if (i.length > 0 && s.length === 0) {
-        l(i);
+      if (i.length > 0 && selectedMonths.length === 0) {
+        setSelectedMonths(i);
       }
-    }, [i, s]),
+      if (availableDays.length > 0 && selectedDays.length === 0) {
+        setSelectedDays(availableDays);
+      }
+    }, [i, selectedMonths, availableDays, selectedDays]),
     oe = A.useMemo(
       () =>
         i.map((D) => ({
@@ -191,18 +236,20 @@ export const e3e = function e3e({ data: e = [], theme: t }) {
         recuperado = 0,
         descarte = 0;
       aWithStatus.forEach((item) => {
-        const matchesMonth = !s.length || s.includes(item.monthKey);
-        if (matchesMonth) {
+        const matchesMonth = !selectedMonths.length || selectedMonths.includes(item.monthKey);
+        const matchesDay = !selectedDays.length || selectedDays.includes(item.dayKey);
+        if (matchesMonth && matchesDay) {
           if (item.status === "AVARIA") avaria++;
           else if (item.status === "RECUPERADO") recuperado++;
           else if (item.status === "DESCARTE") descarte++;
         }
       });
       return { avaria, recuperado, descarte };
-    }, [aWithStatus, s]),
+    }, [aWithStatus, selectedMonths, selectedDays]),
     d = A.useMemo(() => {
       return aWithStatus.filter((D) => {
-        const matchesMonth = !s.length || s.includes(D.monthKey);
+        const matchesMonth = !selectedMonths.length || selectedMonths.includes(D.monthKey);
+        const matchesDay = !selectedDays.length || selectedDays.includes(D.dayKey);
         const matchesTab =
           (activeSubTab === "AVARIA" && D.status === "AVARIA") ||
           (activeSubTab === "RECUPERADOS" && D.status === "RECUPERADO") ||
@@ -212,16 +259,17 @@ export const e3e = function e3e({ data: e = [], theme: t }) {
           !r ||
           D.sku.toLowerCase().includes(searchLower) ||
           D.description.toLowerCase().includes(searchLower);
-        return matchesMonth && matchesTab && matchesSearch;
+        return matchesMonth && matchesDay && matchesTab && matchesSearch;
       });
-    }, [aWithStatus, s, r, activeSubTab]),
+    }, [aWithStatus, selectedMonths, selectedDays, r, activeSubTab]),
     p = A.useMemo(() => {
       let D = 0,
         k = 0,
         O = 0;
       aWithStatus.forEach((I) => {
-        const matchesMonth = !s.length || s.includes(I.monthKey);
-        if (matchesMonth) {
+        const matchesMonth = !selectedMonths.length || selectedMonths.includes(I.monthKey);
+        const matchesDay = !selectedDays.length || selectedDays.includes(I.dayKey);
+        if (matchesMonth && matchesDay) {
           const matchesTab =
             (activeSubTab === "AVARIA" && I.status === "AVARIA") ||
             (activeSubTab === "RECUPERADOS" && I.status === "RECUPERADO") ||
@@ -239,34 +287,37 @@ export const e3e = function e3e({ data: e = [], theme: t }) {
         totalItems: O,
         avgPrice: k > 0 ? D / k : 0,
       };
-    }, [aWithStatus, s, activeSubTab]),
+    }, [aWithStatus, selectedMonths, selectedDays, activeSubTab]),
     g = A.useMemo(() => {
       let D = 0,
         k = 0,
         O = 0;
       aWithStatus.forEach((item) => {
-        const matchesMonth = !s.length || s.includes(item.monthKey);
+        const matchesMonth = !selectedMonths.length || selectedMonths.includes(item.monthKey);
+        const matchesDay = !selectedDays.length || selectedDays.includes(item.dayKey);
         const matchesTab =
           (activeSubTab === "AVARIA" && item.status === "AVARIA") ||
           (activeSubTab === "RECUPERADOS" && item.status === "RECUPERADO") ||
           (activeSubTab === "DESCARTES" && item.status === "DESCARTE");
-        if (matchesMonth && matchesTab) {
+        if (matchesMonth && matchesDay && matchesTab) {
           D += item.totalPrice;
           k += item.quantity;
           O++;
         }
       });
       return { overallValue: D, overallQty: k, overallRows: O };
-    }, [aWithStatus, s, activeSubTab]),
+    }, [aWithStatus, selectedMonths, selectedDays, activeSubTab]),
     totalDayValue = A.useMemo(() => {
       let sum = 0;
       a.forEach((I) => {
-        if (!s.length || s.includes(I.monthKey)) {
+        const matchesMonth = !selectedMonths.length || selectedMonths.includes(I.monthKey);
+        const matchesDay = !selectedDays.length || selectedDays.includes(I.dayKey);
+        if (matchesMonth && matchesDay) {
           sum += I.totalPrice;
         }
       });
       return sum;
-    }, [a, s]),
+    }, [a, selectedMonths, selectedDays]),
     currentSubTheme = A.useMemo(() => {
       if (activeSubTab === "RECUPERADOS") {
         return {
@@ -359,11 +410,18 @@ export const e3e = function e3e({ data: e = [], theme: t }) {
       "#78350f",
     ];
   const selectedMonthsLabel =
-      s.length === 0
+      selectedMonths.length === 0
         ? "Todos os meses"
-        : s.length === 1
-          ? formatMonthLabel(s[0])
-          : `${s.length} meses selecionados`;
+        : selectedMonths.length === 1
+          ? formatMonthLabel(selectedMonths[0])
+          : `${selectedMonths.length} meses selecionados`;
+  const selectedDaysLabel =
+      selectedDays.length === 0
+        ? "Todos os dias"
+        : selectedDays.length === 1
+          ? formatDayLabel(selectedDays[0])
+          : `${selectedDays.length} dias selecionados`;
+  const periodLabel = `${selectedMonthsLabel} • ${selectedDaysLabel}`;
 
   return v.jsxs("div", {
     id: "avaria-dashboard-container",
@@ -410,7 +468,7 @@ export const e3e = function e3e({ data: e = [], theme: t }) {
                   v.jsx("span", {
                     className:
                       "text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1",
-                    children: "Selecione uma Data",
+                    children: "Selecione o Mês",
                   }),
                   v.jsxs("div", {
                     className: "relative",
@@ -419,7 +477,7 @@ export const e3e = function e3e({ data: e = [], theme: t }) {
                         type: "button",
                         onClick: () => setMonthPickerOpen(Boolean(!monthPickerOpen)),
                         className:
-                          "w-full min-w-[220px] pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 bg-white hover:border-amber-400 focus:border-amber-500 focus:outline-none shadow-sm transition-all h-[38px] text-left flex items-center justify-between",
+                          "w-full min-w-[180px] pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 bg-white hover:border-amber-400 focus:border-amber-500 focus:outline-none shadow-sm transition-all h-[38px] text-left flex items-center justify-between",
                         children: [
                           v.jsx("span", {
                             className: "truncate",
@@ -448,20 +506,20 @@ export const e3e = function e3e({ data: e = [], theme: t }) {
                                 v.jsx("div", {
                                   className:
                                     "px-2 py-1 mb-1 text-[10px] font-black uppercase tracking-wider text-slate-500",
-                                  children: "Calendário de meses",
+                                  children: "Meses",
                                 }),
                                 v.jsxs("button", {
                                   type: "button",
-                                  onClick: () => l([]),
+                                  onClick: () => setSelectedMonths([]),
                                   className: G(
                                     "w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between hover:bg-amber-50 cursor-pointer",
-                                    s.length === 0
+                                    selectedMonths.length === 0
                                       ? "text-amber-600 bg-amber-50"
                                       : "text-slate-700",
                                   ),
                                   children: [
                                     v.jsx("span", { children: "Todos os meses" }),
-                                    s.length === 0 &&
+                                    selectedMonths.length === 0 &&
                                       v.jsx(dEe, {
                                         className: "w-3.5 h-3.5 text-amber-600",
                                       }),
@@ -471,13 +529,13 @@ export const e3e = function e3e({ data: e = [], theme: t }) {
                                   className: "border-t border-slate-100 my-1",
                                 }),
                                 oe.map((month) => {
-                                  const isSelected = s.includes(month.key);
+                                  const isSelected = selectedMonths.includes(month.key);
                                   return v.jsx(
                                     "button",
                                     {
                                       type: "button",
                                       onClick: () => {
-                                        l((current) =>
+                                        setSelectedMonths((current) =>
                                           current.includes(month.key)
                                             ? current.filter((item) => item !== month.key)
                                             : [...current, month.key],
@@ -504,6 +562,116 @@ export const e3e = function e3e({ data: e = [], theme: t }) {
                                       }),
                                     },
                                     month.key,
+                                  );
+                                }),
+                              ],
+                            }),
+                          ],
+                        }),
+                    ],
+                  }),
+                ],
+              }),
+              v.jsxs("div", {
+                className: "flex flex-col",
+                children: [
+                  v.jsx("span", {
+                    className:
+                      "text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1",
+                    children: "Selecione o Dia",
+                  }),
+                  v.jsxs("div", {
+                    className: "relative",
+                    children: [
+                      v.jsxs("button", {
+                        type: "button",
+                        onClick: () => setDayPickerOpen(Boolean(!dayPickerOpen)),
+                        className:
+                          "w-full min-w-[180px] pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 bg-white hover:border-amber-400 focus:border-amber-500 focus:outline-none shadow-sm transition-all h-[38px] text-left flex items-center justify-between",
+                        children: [
+                          v.jsx("span", {
+                            className: "truncate",
+                            children: selectedDaysLabel,
+                          }),
+                          v.jsx(pEe, {
+                            className: "w-4 h-4 text-slate-400 shrink-0 ml-2",
+                          }),
+                        ],
+                      }),
+                      v.jsx(Nx, {
+                        className:
+                          "w-4 h-4 text-slate-400 absolute left-3 top-3.5 pointer-events-none",
+                      }),
+                      dayPickerOpen &&
+                        v.jsxs(v.Fragment, {
+                          children: [
+                            v.jsx("div", {
+                              className: "fixed inset-0 z-20",
+                              onClick: () => setDayPickerOpen(false),
+                            }),
+                            v.jsxs("div", {
+                              className:
+                                "absolute left-0 right-0 mt-1 max-h-72 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-xl z-30 p-2 space-y-1",
+                              children: [
+                                v.jsx("div", {
+                                  className:
+                                    "px-2 py-1 mb-1 text-[10px] font-black uppercase tracking-wider text-slate-500",
+                                  children: "Dias",
+                                }),
+                                v.jsxs("button", {
+                                  type: "button",
+                                  onClick: () => setSelectedDays([]),
+                                  className: G(
+                                    "w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between hover:bg-amber-50 cursor-pointer",
+                                    selectedDays.length === 0
+                                      ? "text-amber-600 bg-amber-50"
+                                      : "text-slate-700",
+                                  ),
+                                  children: [
+                                    v.jsx("span", { children: "Todos os dias" }),
+                                    selectedDays.length === 0 &&
+                                      v.jsx(dEe, {
+                                        className: "w-3.5 h-3.5 text-amber-600",
+                                      }),
+                                  ],
+                                }),
+                                v.jsx("div", {
+                                  className: "border-t border-slate-100 my-1",
+                                }),
+                                availableDays.map((day) => {
+                                  const isSelected = selectedDays.includes(day);
+                                  return v.jsx(
+                                    "button",
+                                    {
+                                      type: "button",
+                                      onClick: () => {
+                                        setSelectedDays((current) =>
+                                          current.includes(day)
+                                            ? current.filter((item) => item !== day)
+                                            : [...current, day],
+                                        );
+                                      },
+                                      className: G(
+                                        "w-full text-left px-3 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between hover:bg-amber-50 transition-colors cursor-pointer",
+                                        isSelected
+                                          ? "text-amber-600 bg-amber-50/70 font-bold"
+                                          : "text-slate-700 hover:text-amber-600",
+                                      ),
+                                      children: v.jsxs("div", {
+                                        className: "flex items-center gap-2",
+                                        children: [
+                                          v.jsx("input", {
+                                            type: "checkbox",
+                                            checked: isSelected,
+                                            readOnly: true,
+                                            className:
+                                              "rounded border-amber-300 text-amber-600 focus:ring-amber-500 w-3.5 h-3.5 cursor-pointer accent-amber-600",
+                                          }),
+                                          v.jsx("span", { children: formatDayLabel(day) }),
+                                        ],
+                                      }),
+                                    },
+                                    day,
                                   );
                                 }),
                               ],
@@ -691,7 +859,7 @@ export const e3e = function e3e({ data: e = [], theme: t }) {
                       "Período selecionado: ",
                       v.jsx("strong", {
                         className: currentSubTheme.accentText,
-                        children: s || "N/A",
+                        children: periodLabel || "N/A",
                       }),
                     ],
                   }),
@@ -1264,8 +1432,8 @@ export const e3e = function e3e({ data: e = [], theme: t }) {
                             className:
                               "py-12 text-center text-slate-400 text-xs",
                             children: [
-                              "Nenhum registro encontrado para a data ",
-                              s,
+                              "Nenhum registro encontrado para o período ",
+                              periodLabel,
                               " com os critérios definidos.",
                             ],
                           }),

@@ -1,6 +1,12 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
+import dotenv from "dotenv";
+
+// Load .env when running locally (dev). For production, set env vars in the host (Vercel).
+dotenv.config();
+
+const DEFAULT_SHEET_ID = "1tnl6iGFhO87pd0wYPnmOVoCSXJp10xwvSqagHrwTr-s";
 
 async function startServer() {
   const app = express();
@@ -9,7 +15,9 @@ async function startServer() {
   // API route to fetch Google Sheet as XLSX
   app.get("/api/fetch-sheets", async (req, res) => {
     try {
-      let rawSheetId = process.env.GOOGLE_SHEETS_ID || "1tnl6iGFhO87pd0wYPnmOVoCSXJp10xwvSqagHrwTr-s";
+      // Allow overriding sheet for quick testing via query param: /api/fetch-sheets?sheet=<URL or ID>
+      const querySheet = typeof req.query?.sheet === "string" ? req.query.sheet : undefined;
+      let rawSheetId = (querySheet && querySheet.trim()) || process.env.GOOGLE_SHEETS_ID || DEFAULT_SHEET_ID;
       rawSheetId = rawSheetId.trim();
 
       let sheetId = rawSheetId;
@@ -31,14 +39,24 @@ async function startServer() {
       console.log(`[Server] Extracted sheetId: "${sheetId}"`);
       console.log(`[Server] Fetching sheet from export URL: ${exportUrl}`);
 
-      const response = await fetch(exportUrl);
+      const response = await fetch(exportUrl, {
+        method: "GET",
+        headers: {
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
+      });
       if (!response.ok) {
         let errorText = "";
         try {
           errorText = await response.text();
           errorText = errorText.substring(0, 300);
         } catch (e) {}
-        throw new Error(`Failed to fetch Google Sheet: ${response.statusText} (Status: ${response.status}). Response preview: ${errorText}`);
+        // Return a helpful error to the client so UI can show meaningful message
+        const msg = `Failed to fetch Google Sheet: ${response.statusText} (Status: ${response.status}). Response preview: ${errorText}`;
+        console.error("[Server] ", msg);
+        res.status(502).json({ error: msg });
+        return;
       }
 
       const buffer = await response.arrayBuffer();
